@@ -32,7 +32,7 @@ export default function Financas({ barbeiros, show }: { barbeiros: Barbeiro[]; s
   const lucro = fat - com - dsp;
 
   async function addDespesa() {
-    const v = parseFloat(valor.replace(",", "."));
+    const v = Math.round(parseFloat(valor.replace(/\s/g, "").replace(",", ".")));
     if (!desc.trim() || isNaN(v) || v < 0) return show("Preencha descrição e valor.", true);
     const { error } = await supabase.from("despesas").insert({ descricao: desc.trim(), valor: v, categoria: cat, data: dia });
     if (error) return show(error.message, true);
@@ -71,7 +71,7 @@ export default function Financas({ barbeiros, show }: { barbeiros: Barbeiro[]; s
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="row wrap" style={{ alignItems: "flex-end" }}>
           <Field label="Descrição"><input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} /></Field>
-          <Field label="Valor (€)"><input className="input" value={valor} onChange={(e) => setValor(e.target.value)} inputMode="decimal" /></Field>
+          <Field label="Valor (FCFA)"><input className="input" value={valor} onChange={(e) => setValor(e.target.value)} inputMode="numeric" /></Field>
           <Field label="Categoria"><select value={cat} onChange={(e) => setCat(e.target.value)}>{CATEGORIAS.map((c) => <option key={c}>{c}</option>)}</select></Field>
           <Field label="Data"><input className="input" type="date" value={dia} onChange={(e) => setDia(e.target.value)} /></Field>
           <button className="btn gold" style={{ marginBottom: 12 }} onClick={addDespesa}>Adicionar</button>

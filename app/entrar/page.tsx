@@ -7,6 +7,8 @@ import { Field } from "@/components/ui";
 export default function Entrar() {
   const router = useRouter();
   const [modo, setModo] = useState<"entrar" | "criar">("entrar");
+  const [nome, setNome] = useState("");
+  const [tel, setTel] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [msg, setMsg] = useState<{ t: string; erro: boolean } | null>(null);
@@ -31,7 +33,12 @@ export default function Entrar() {
       if (error) setMsg({ t: error.message === "Invalid login credentials" ? "Email ou palavra-passe incorretos." : error.message, erro: true });
       else await destino();
     } else {
-      const { data, error } = await supabase.auth.signUp({ email, password: pass });
+      if (nome.trim().length < 3) { setMsg({ t: "Indique o seu nome completo.", erro: true }); setBusy(false); return; }
+      if (tel.replace(/\D/g, "").length < 9) { setMsg({ t: "Indique um número de telemóvel (WhatsApp) válido.", erro: true }); setBusy(false); return; }
+      const { data, error } = await supabase.auth.signUp({
+        email, password: pass,
+        options: { data: { nome: nome.trim(), telefone: tel.trim() } },
+      });
       if (error) setMsg({ t: error.message, erro: true });
       else if (!data.session) setMsg({ t: "Conta criada! Confirme o seu email (se pedido) e depois entre.", erro: false });
       else await destino();
@@ -58,6 +65,12 @@ export default function Entrar() {
             <button type="button" className={"tab" + (modo === "entrar" ? " on" : "")} onClick={() => setModo("entrar")}>Entrar</button>
             <button type="button" className={"tab" + (modo === "criar" ? " on" : "")} onClick={() => setModo("criar")}>Criar conta</button>
           </div>
+          {modo === "criar" && (
+            <>
+              <Field label="Nome completo"><input className="input" required value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" /></Field>
+              <Field label="Telemóvel (WhatsApp)"><input className="input" required value={tel} onChange={(e) => setTel(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="Ex.: 77 123 45 67" /></Field>
+            </>
+          )}
           <Field label="Email"><input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></Field>
           <Field label="Palavra-passe"><input className="input" type="password" required minLength={6} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete={modo === "entrar" ? "current-password" : "new-password"} /></Field>
           {msg && <p style={{ color: msg.erro ? "var(--bad)" : "var(--ok)", marginBottom: 12 }}>{msg.t}</p>}

@@ -40,6 +40,8 @@ create table if not exists public.servicos (
 create table if not exists public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
   email       text,
+  nome        text,
+  telefone    text,
   role        text not null default 'pendente' check (role in ('owner','barbeiro','pendente')),
   barbeiro_id uuid references public.barbeiros(id) on delete set null,
   criado_em   timestamptz not null default now()
@@ -139,14 +141,20 @@ returns int language sql immutable as $$
   select (extract(hour from t) * 60 + extract(minute from t))::int;
 $$;
 
+-- Colunas novas (para bases já criadas com a versão anterior)
+alter table public.profiles add column if not exists nome text;
+alter table public.profiles add column if not exists telefone text;
+
 -- Primeiro utilizador registado passa a ser o DONO; os seguintes ficam "pendente"
 -- até o dono os associar a um barbeiro (Painel do Dono > Equipa).
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, email, role)
+  insert into public.profiles (id, email, nome, telefone, role)
   values (
     new.id, new.email,
+    nullif(trim(new.raw_user_meta_data ->> 'nome'), ''),
+    nullif(trim(new.raw_user_meta_data ->> 'telefone'), ''),
     case when exists (select 1 from public.profiles where role = 'owner') then 'pendente' else 'owner' end
   )
   on conflict (id) do nothing;
@@ -162,6 +170,13 @@ create trigger on_auth_user_created
 insert into public.profiles (id, email, role)
 select u.id, u.email, 'pendente' from auth.users u
 on conflict (id) do nothing;
+
+-- Preenche nome/telefone a partir dos metadados do Auth (user_metadata)
+update public.profiles p
+   set nome     = coalesce(p.nome,     nullif(trim(u.raw_user_meta_data ->> 'nome'), '')),
+       telefone = coalesce(p.telefone, nullif(trim(u.raw_user_meta_data ->> 'telefone'), ''))
+  from auth.users u
+ where u.id = p.id;
 
 update public.profiles set role = 'owner'
 where id = (select u.id from auth.users u order by u.created_at limit 1)
@@ -212,7 +227,7 @@ begin
   end if;
 
   new.comissao_valor := case when new.estado = 'concluido'
-                             then round(new.preco * new.comissao_pct / 100, 2) else 0 end;
+                             then round(new.preco * new.comissao_pct / 100, 0) else 0 end;
   return new;
 end $$;
 
@@ -304,7 +319,7 @@ begin
      duracao_min, preco, desconto_pct)
   values
     (trim(p_nome), tel, p_barbeiro, p_servico, p_data, p_hora,
-     s.duracao_min, round(s.preco * (1 - disc / 100), 2), disc)
+     s.duracao_min, round(s.preco * (1 - disc / 100), 0), disc)
   returning id into novo;
 
   update public.clientes
@@ -481,14 +496,21 @@ on conflict (chave) do nothing;
 
 insert into public.servicos (nome, descricao, preco, duracao_min, ordem)
 select * from (values
-  ('Corte Clássico',  'Corte à tesoura ou máquina com acabamento a navalha', 15.00, 30, 1),
-  ('Degradê',         'Fade moderno com transição suave e finalização',       17.00, 45, 2),
-  ('Barba',           'Aparar e desenhar barba com toalha quente',            10.00, 30, 3),
-  ('Corte + Barba',   'O combo completo: cabelo e barba',                     25.00, 60, 4),
-  ('Corte Infantil',  'Até aos 10 anos',                                      10.00, 30, 5),
-  ('Sobrancelha',     'Limpeza e desenho a navalha',                           5.00, 15, 6)
+  ('Corte Clássico',  'Corte à tesoura ou máquina com acabamento a navalha', 3000, 30, 1),
+  ('Degradê',         'Fade moderno com transição suave e finalização',       3500, 45, 2),
+  ('Barba',           'Aparar e desenhar barba com toalha quente',            2000, 30, 3),
+  ('Corte + Barba',   'O combo completo: cabelo e barba',                     5000, 60, 4),
+  ('Corte Infantil',  'Até aos 10 anos',                                      2000, 30, 5),
+  ('Sobrancelha',     'Limpeza e desenho a navalha',                           1000, 15, 6)
 ) as v(nome, descricao, preco, duracao_min, ordem)
 where not exists (select 1 from public.servicos);
+
+-- Migração: se os serviços de exemplo ainda tiverem os preços antigos (em euros), passam a FCFA.
+update public.servicos set preco = case nome
+    when 'Corte Clássico' then 3000 when 'Degradê' then 3500 when 'Barba' then 2000
+    when 'Corte + Barba' then 5000 when 'Corte Infantil' then 2000 when 'Sobrancelha' then 1000 end
+ where (nome, preco) in (('Corte Clássico',15.00),('Degradê',17.00),('Barba',10.00),
+                         ('Corte + Barba',25.00),('Corte Infantil',10.00),('Sobrancelha',5.00));
 
 insert into public.barbeiros (nome, comissao_pct, hora_abertura, hora_fecho, dias_trabalho)
 select * from (values

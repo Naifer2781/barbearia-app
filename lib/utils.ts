@@ -1,7 +1,8 @@
 import type { Promocao } from "./types";
 
+/** Formata em FCFA, sem casas decimais, com espaço como separador de milhares: 5 000 FCFA */
 export const eur = (n: number | null | undefined) =>
-  new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(Number(n || 0));
+  Math.round(Number(n || 0)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") + "\u00a0FCFA";
 
 export const pad = (n: number) => String(n).padStart(2, "0");
 
