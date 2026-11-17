@@ -34,6 +34,6 @@ export interface Despesa {
   id: string; descricao: string; categoria: string; valor: number; data: string;
 }
 export interface Profile {
-  id: string; email: string | null; role: "owner" | "barbeiro" | "pendente";
+  id: string; email: string | null; nome: string | null; telefone: string | null; role: "owner" | "barbeiro" | "pendente";
   barbeiro_id: string | null;
 }

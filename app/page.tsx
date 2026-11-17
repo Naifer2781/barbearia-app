@@ -44,12 +44,29 @@ export default function ClienteApp() {
       <TopBar titulo={cfg.nome_barbearia || "Barbearia"}>
         {cfg.whatsapp && <a className="btn sm" href={waLink(cfg.whatsapp, "Olá! ")} target="_blank" rel="noreferrer">WhatsApp</a>}
       </TopBar>
-      <div className="container narrow">
-        <div className="hero">
-          <h1>Estilo <span className="gold">impecável</span>,<br />sem filas de espera.</h1>
-          <p>Marque o seu corte em menos de um minuto{cfg.morada ? ` · ${cfg.morada}` : ""}</p>
-        </div>
 
+      <section className="hero" style={cfg.hero_url ? { backgroundImage: `url(${cfg.hero_url})` } : undefined}>
+        <svg className="art" viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" aria-hidden="true">
+          <circle cx="55" cy="150" r="22" /><circle cx="145" cy="150" r="22" />
+          <path d="M68 132 L150 30" /><path d="M132 132 L50 30" />
+          <path d="M20 20 L40 40 M180 20 L160 40" opacity=".5" />
+        </svg>
+        <div className="in">
+          <span className="kicker">Barbearia · Marcações online</span>
+          <h1>O corte certo,<br />à sua hora.</h1>
+          <p>Escolha o serviço, o barbeiro e o horário em menos de um minuto. Sem filas de espera.</p>
+          <div className="cta">
+            <button className="btn gold lg" onClick={() => { setTab("marcar"); document.getElementById("reservar")?.scrollIntoView({ behavior: "smooth" }); }}>Marcar Agora</button>
+            <button className="btn lg" onClick={() => { setTab("minhas"); document.getElementById("reservar")?.scrollIntoView({ behavior: "smooth" }); }}>As minhas marcações</button>
+          </div>
+          <div className="meta">
+            {cfg.morada && <span>📍 {cfg.morada}</span>}
+            {barbeiros[0] && <span>🕘 {hhmm(barbeiros[0].hora_abertura)} – {hhmm(barbeiros[0].hora_fecho)}</span>}
+          </div>
+        </div>
+      </section>
+
+      <div className="main-w" id="reservar">
         {promos.length > 0 && (
           <div className="col" style={{ marginBottom: 16 }}>
             {promos.map((p) => (
@@ -154,7 +171,7 @@ function Marcar({ servicos, barbeiros, promos, show, irMinhas }: {
   }, [barbeiro, servico, data, ocupados]);
 
   const desc = servico && data ? descontoPara(promos, servico.id, data) : 0;
-  const preco = servico ? Math.round(Number(servico.preco) * (100 - desc)) / 100 : 0;
+  const preco = servico ? Math.round(Number(servico.preco) * (100 - desc) / 100) : 0;
 
   function reset() {
     setStep(1); setServicoId(""); setBarbeiroId(""); setData(""); setHora(""); setFeito(false);
@@ -195,23 +212,22 @@ function Marcar({ servicos, barbeiros, promos, show, irMinhas }: {
 
       {step === 1 && (
         <>
-          <h2>1. Escolha o serviço</h2>
+          <h2 className="sec-title" style={{ marginTop: 0 }}>Serviços e preços</h2>
           {servicos.length === 0 ? <Empty>Sem serviços disponíveis de momento.</Empty> : (
-            <div className="col">
+            <div className="sgrid">
               {servicos.map((s) => {
                 const d = descontoPara(promos, s.id, hojeISO());
                 return (
-                  <button key={s.id} className={"opt" + (servicoId === s.id ? " on" : "")}
+                  <button key={s.id} className={"scard" + (servicoId === s.id ? " on" : "")}
                     onClick={() => { setServicoId(s.id); setHora(""); setStep(2); }}>
-                    <div className="row between">
-                      <b>{s.nome}</b>
-                      <span className="gold" style={{ fontWeight: 800 }}>
-                        {d > 0 && <s style={{ color: "var(--muted)", fontWeight: 400, marginRight: 6 }}>{eur(s.preco)}</s>}
-                        {eur(Math.round(Number(s.preco) * (100 - d)) / 100)}
-                      </span>
-                    </div>
-                    {s.descricao && <div className="muted">{s.descricao}</div>}
-                    <div className="muted">⏱ {s.duracao_min} min</div>
+                    <span className="ic">✂</span>
+                    <b>{s.nome}</b>
+                    {s.descricao && <span className="muted" style={{ fontSize: ".78rem" }}>{s.descricao}</span>}
+                    <span className="muted">⏱ {s.duracao_min} min</span>
+                    <span className="pr">
+                      {d > 0 && <s>{eur(s.preco)}</s>}
+                      {eur(Math.round(Number(s.preco) * (100 - d) / 100))}
+                    </span>
                   </button>
                 );
               })}
@@ -286,8 +302,8 @@ function Marcar({ servicos, barbeiros, promos, show, irMinhas }: {
           <Field label="Data de nascimento (opcional — para prendas de aniversário)"><input className="input" type="date" value={nasc} onChange={(e) => setNasc(e.target.value)} max={hojeISO()} /></Field>
           <div className="row">
             <button className="btn" onClick={() => setStep(3)}>← Voltar</button>
-            <button className="btn gold right" disabled={enviando || nome.trim().length < 2 || tel.replace(/\D/g, "").length < 9} onClick={confirmar}>
-              {enviando ? "A confirmar…" : "Confirmar marcação"}
+            <button className="btn gold lg right" disabled={enviando || nome.trim().length < 2 || tel.replace(/\D/g, "").length < 9} onClick={confirmar}>
+              {enviando ? "A confirmar…" : "Confirmar Marcação"}
             </button>
           </div>
         </>

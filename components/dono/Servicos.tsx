@@ -10,7 +10,7 @@ export default function Servicos({ servicos, recarregar, show }: { servicos: Ser
 
   async function guardar() {
     if (!ed) return;
-    const preco = Number(String(ed.preco).replace(",", "."));
+    const preco = Math.round(Number(String(ed.preco).replace(/\s/g, "").replace(",", ".")));
     if (!ed.nome?.trim() || isNaN(preco)) return show("Nome e preço são obrigatórios.", true);
     const row = { nome: ed.nome.trim(), descricao: ed.descricao || null, preco, duracao_min: Number(ed.duracao_min) || 30, ativo: ed.ativo ?? true, ordem: Number(ed.ordem) || 0 };
     const { error } = ed.id ? await supabase.from("servicos").update(row).eq("id", ed.id) : await supabase.from("servicos").insert(row);
@@ -28,7 +28,7 @@ export default function Servicos({ servicos, recarregar, show }: { servicos: Ser
     <div>
       <div className="row between" style={{ marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>Serviços e preços</h2>
-        <button className="btn gold" onClick={() => setEd({ nome: "", preco: 15, duracao_min: 30, ativo: true, ordem: servicos.length + 1 })}>＋ Novo</button>
+        <button className="btn gold" onClick={() => setEd({ nome: "", preco: 3000, duracao_min: 30, ativo: true, ordem: servicos.length + 1 })}>＋ Novo</button>
       </div>
       {servicos.length === 0 ? <Empty>Ainda sem serviços.</Empty> : (
         <div className="col">{servicos.map((s) => (
@@ -47,7 +47,7 @@ export default function Servicos({ servicos, recarregar, show }: { servicos: Ser
           <Field label="Nome"><input className="input" value={ed.nome ?? ""} onChange={(e) => setEd({ ...ed, nome: e.target.value })} /></Field>
           <Field label="Descrição"><input className="input" value={ed.descricao ?? ""} onChange={(e) => setEd({ ...ed, descricao: e.target.value })} /></Field>
           <div className="row">
-            <Field label="Preço (€)"><input className="input" inputMode="decimal" value={String(ed.preco ?? "")} onChange={(e) => setEd({ ...ed, preco: e.target.value as unknown as number })} /></Field>
+            <Field label="Preço (FCFA)"><input className="input" inputMode="numeric" value={String(ed.preco ?? "")} onChange={(e) => setEd({ ...ed, preco: e.target.value as unknown as number })} /></Field>
             <Field label="Duração (min)"><input className="input" type="number" step={15} min={15} value={ed.duracao_min ?? 30} onChange={(e) => setEd({ ...ed, duracao_min: Number(e.target.value) })} /></Field>
             <Field label="Ordem"><input className="input" type="number" value={ed.ordem ?? 0} onChange={(e) => setEd({ ...ed, ordem: Number(e.target.value) })} /></Field>
           </div>

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRealtime } from "@/lib/hooks";
 import type { Barbeiro, Profile } from "@/lib/types";
-import { DIAS, hhmm } from "@/lib/utils";
+import { DIAS, hhmm, normTel, waLink } from "@/lib/utils";
 import { Empty, Field, Modal } from "../ui";
 
 export default function Equipa({ barbeiros, recarregar, show }: { barbeiros: Barbeiro[]; recarregar: () => void; show: (t: string, e?: boolean) => void }) {
@@ -53,7 +53,7 @@ export default function Equipa({ barbeiros, recarregar, show }: { barbeiros: Bar
             <div className="card" key={b.id} style={{ opacity: b.ativo ? 1 : 0.55 }}>
               <div className="row between"><b>{b.nome}</b><span className="badge marcado">{Number(b.comissao_pct)}% comissão</span></div>
               <div className="muted">{hhmm(b.hora_abertura)}–{hhmm(b.hora_fecho)} · {b.dias_trabalho.map((d) => DIAS[d - 1]).join(", ")}</div>
-              <div className="muted">Login: {conta ? conta.email : "não associado"}</div>
+              <div className="muted">Login: {conta ? `${conta.nome ?? ""} ${conta.email ?? ""}`.trim() : "não associado"}</div>
               <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => setEd(b)}>Editar</button></div>
             </div>
           );
@@ -66,7 +66,14 @@ export default function Equipa({ barbeiros, recarregar, show }: { barbeiros: Bar
       {contas.length === 0 ? <Empty>Sem contas pendentes ou de barbeiros.</Empty> : (
         <div className="col">{contas.map((c) => (
           <div className="card row wrap" key={c.id}>
-            <div style={{ flex: 1, minWidth: 180 }}><b>{c.email}</b><div className="muted">{c.role === "pendente" ? "⏳ Pendente" : "✓ Barbeiro"}</div></div>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <b>{c.nome || "(sem nome)"}</b>
+              <div className="muted">{c.email}</div>
+              <div className="muted">
+                {c.telefone ? <>📱 <a href={waLink(normTel(c.telefone))} target="_blank" rel="noreferrer">{c.telefone}</a></> : "Sem telemóvel"}
+                {" · "}{c.role === "pendente" ? "⏳ Pendente" : "✓ Barbeiro"}
+              </div>
+            </div>
             <select style={{ width: 220 }} value={c.barbeiro_id ?? ""} onChange={(e) => associar(c.id, e.target.value)}>
               <option value="">— sem acesso —</option>
               {barbeiros.map((b) => <option key={b.id} value={b.id}>{b.nome}</option>)}
