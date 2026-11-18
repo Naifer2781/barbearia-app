@@ -13,6 +13,7 @@ export default function Entrar() {
   const [pass, setPass] = useState("");
   const [msg, setMsg] = useState<{ t: string; erro: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ver, setVer] = useState(false);
   const [pendente, setPendente] = useState(false);
 
   async function destino() {
@@ -72,7 +73,18 @@ export default function Entrar() {
             </>
           )}
           <Field label="Email"><input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></Field>
-          <Field label="Palavra-passe"><input className="input" type="password" required minLength={6} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete={modo === "entrar" ? "current-password" : "new-password"} /></Field>
+          <Field label="Palavra-passe">
+            <div className="pw">
+              <input className="input" type={ver ? "text" : "password"} required minLength={6} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete={modo === "entrar" ? "current-password" : "new-password"} />
+              <button type="button" onClick={() => setVer((v) => !v)} aria-label={ver ? "Ocultar palavra-passe" : "Mostrar palavra-passe"} aria-pressed={ver} title={ver ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}>
+                {ver ? (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><path d="M1 1l22 22" /></svg>
+                ) : (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                )}
+              </button>
+            </div>
+          </Field>
           {msg && <p style={{ color: msg.erro ? "var(--bad)" : "var(--ok)", marginBottom: 12 }}>{msg.t}</p>}
           <button className="btn gold block" disabled={busy}>{busy ? "Aguarde…" : modo === "entrar" ? "Entrar" : "Criar conta"}</button>
           {modo === "criar" && <p className="muted" style={{ marginTop: 10 }}>A primeira conta criada torna-se o Dono. As seguintes ficam pendentes até o dono as associar a um barbeiro.</p>}

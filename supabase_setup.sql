@@ -76,6 +76,14 @@ create table if not exists public.marcacoes (
   encaixe          boolean not null default false,
   criado_em        timestamptz not null default now()
 );
+-- Quem cancelou a marcação: cliente | barbeiro | dono (preenchido automaticamente pelo trigger)
+alter table public.marcacoes add column if not exists cancelado_por text;
+do $$ begin
+  alter table public.marcacoes add constraint marcacoes_cancelado_por_chk
+    check (cancelado_por is null or cancelado_por in ('cliente','barbeiro','dono'));
+exception when duplicate_object then null;
+end $$;
+
 create index if not exists marcacoes_data_idx on public.marcacoes (data, barbeiro_id);
 create index if not exists marcacoes_tel_idx  on public.marcacoes (cliente_telefone);
 
@@ -226,6 +234,22 @@ begin
     new.cliente_id     := old.cliente_id;
   end if;
 
+  -- Regista QUEM cancelou (não pode ser forjado pelo cliente da API):
+  --  cliente  = função cancelar_marcacao (página pública)
+  --  dono     = utilizador com papel owner
+  --  barbeiro = qualquer outro utilizador autenticado
+  if tg_op = 'UPDATE' and new.estado = 'cancelado' and old.estado <> 'cancelado' then
+    new.cancelado_por := coalesce(
+      nullif(current_setting('app.cancelado_por', true), ''),
+      case when auth.uid() is null then null
+           when public.is_owner() then 'dono'
+           else 'barbeiro' end);
+  elsif tg_op = 'UPDATE' and new.estado = 'cancelado' then
+    new.cancelado_por := old.cancelado_por;
+  elsif new.estado <> 'cancelado' then
+    new.cancelado_por := null;
+  end if;
+
   new.comissao_valor := case when new.estado = 'concluido'
                              then round(new.preco * new.comissao_pct / 100, 0) else 0 end;
   return new;
@@ -353,6 +377,7 @@ declare
   hoje date := (now() at time zone 'Europe/Lisbon')::date;
   agora time := (now() at time zone 'Europe/Lisbon')::time;
 begin
+  perform set_config('app.cancelado_por', 'cliente', true);
   update public.marcacoes
      set estado = 'cancelado'
    where id = p_id

@@ -29,8 +29,14 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   return <div className="field"><label>{label}</label>{children}</div>;
 }
 
-export function Estado({ e }: { e: string }) {
-  const t: Record<string, string> = { marcado: "Marcado", concluido: "Concluído", faltou: "Faltou", cancelado: "Cancelado" };
+export function rotuloCancelado(por?: string | null) {
+  return por === "cliente" ? "Cancelado pelo cliente" : por === "barbeiro" ? "Cancelado pelo barbeiro"
+    : por === "dono" ? "Cancelado pelo dono" : "Cancelado";
+}
+
+export function Estado({ e, por }: { e: string; por?: string | null }) {
+  if (e === "cancelado") return <span className="cancel-tag">✕ {rotuloCancelado(por)}</span>;
+  const t: Record<string, string> = { marcado: "Marcado", concluido: "Concluído", faltou: "Faltou" };
   return <span className={"badge " + e}>{t[e] ?? e}</span>;
 }
 
