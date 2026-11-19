@@ -133,15 +133,11 @@ returns uuid language sql stable security definer set search_path = public as $$
   select barbeiro_id from public.profiles where id = auth.uid() and role = 'barbeiro';
 $$;
 
--- Normaliza telefones: só dígitos, sem 00 inicial, e prefixo 351 se tiver 9 dígitos.
+-- Normaliza telefones: só dígitos e sem 00 inicial. A app envia sempre o número
+-- internacional completo (indicativo + número), ex.: 245955123456.
 create or replace function public.norm_tel(t text)
 returns text language sql immutable as $$
-  select case
-    when d = '' then null
-    when length(d) = 9 then '351' || d
-    else d
-  end
-  from (select regexp_replace(regexp_replace(coalesce(t,''), '\D', '', 'g'), '^00', '') as d) x;
+  select nullif(regexp_replace(regexp_replace(coalesce(t,''), '\D', '', 'g'), '^00', ''), '');
 $$;
 
 create or replace function public.mins(t time)
@@ -516,7 +512,8 @@ insert into public.configuracoes (chave, valor) values
   ('nome_barbearia', 'Barbearia Premium'),
   ('morada',         'Rua Exemplo 123, Lisboa'),
   ('whatsapp',       '351912345678'),
-  ('cortes_brinde',  '10')
+  ('cortes_brinde',  '10'),
+  ('ddi_padrao',     '245')
 on conflict (chave) do nothing;
 
 insert into public.servicos (nome, descricao, preco, duracao_min, ordem)

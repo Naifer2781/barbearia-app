@@ -198,3 +198,8 @@ input[type=checkbox] { accent-color: var(--gold); width: 18px; height: 18px; }
 .tab .n { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; font-size: .74rem;
   background: rgba(255,255,255,.14); }
 .tab.on .n { background: rgba(0,0,0,.14); }
+
+/* lembretes WhatsApp */
+.btn.wa { background: #25d366; border-color: #25d366; color: #052e16; text-decoration: none; }
+.btn.wa:hover { background: #3be07a; border-color: #3be07a; }
+.badge.sent { color: #052e16; background: #25d366; border-color: #25d366; }
