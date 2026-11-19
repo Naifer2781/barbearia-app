@@ -1,5 +1,6 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { useRealtime, useToast } from "@/lib/hooks";
 import type { BarbeiroPublico, Promocao, Servico } from "@/lib/types";
@@ -47,7 +48,9 @@ export default function ClienteApp() {
         {cfg.whatsapp && <a className="btn sm" href={waLink(cfg.whatsapp, "Olá! ")} target="_blank" rel="noreferrer">WhatsApp</a>}
       </TopBar>
 
-      <div className="banner-img" style={cfg.hero_url ? ({ "--hero-url": `url("${cfg.hero_url.replace(/"/g, "")}")` } as CSSProperties) : undefined} />
+      <div className="banner-img">
+        <Image src="/capa-barbearia.jpg" alt="Barbeiro a cortar o cabelo de um cliente na barbearia" fill priority sizes="100vw" className="cover-img" />
+      </div>
 
       <div className="sheet" id="reservar">
         <span className="tag">Marcações online</span>
