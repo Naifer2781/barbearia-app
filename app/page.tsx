@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRealtime, useToast } from "@/lib/hooks";
 import type { BarbeiroPublico, Promocao, Servico } from "@/lib/types";
@@ -47,30 +47,18 @@ export default function ClienteApp() {
         {cfg.whatsapp && <a className="btn sm" href={waLink(cfg.whatsapp, "Olá! ")} target="_blank" rel="noreferrer">WhatsApp</a>}
       </TopBar>
 
-      <section className="hero" style={cfg.hero_url ? { backgroundImage: `url(${cfg.hero_url})` } : undefined}>
-        <svg className="art" viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" aria-hidden="true">
-          <circle cx="55" cy="150" r="22" /><circle cx="145" cy="150" r="22" />
-          <path d="M68 132 L150 30" /><path d="M132 132 L50 30" />
-          <path d="M20 20 L40 40 M180 20 L160 40" opacity=".5" />
-        </svg>
-        <div className="in">
-          <span className="kicker">Barbearia · Marcações online</span>
-          <h1>O corte certo,<br />à sua hora.</h1>
-          <p>Escolha o serviço, o barbeiro e o horário em menos de um minuto. Sem filas de espera.</p>
-          <div className="cta">
-            <button className="btn gold lg" onClick={() => { setTab("marcar"); document.getElementById("reservar")?.scrollIntoView({ behavior: "smooth" }); }}>Marcar Agora</button>
-            <button className="btn lg" onClick={() => { setTab("minhas"); document.getElementById("reservar")?.scrollIntoView({ behavior: "smooth" }); }}>As minhas marcações</button>
-          </div>
-          <div className="meta">
-            {cfg.morada && <span>📍 {cfg.morada}</span>}
-            {barbeiros[0] && <span>🕘 {hhmm(barbeiros[0].hora_abertura)} – {hhmm(barbeiros[0].hora_fecho)}</span>}
-          </div>
-        </div>
-      </section>
+      <div className="banner-img" style={cfg.hero_url ? ({ "--hero-url": `url("${cfg.hero_url.replace(/"/g, "")}")` } as CSSProperties) : undefined} />
 
-      <div className="main-w" id="reservar">
+      <div className="sheet" id="reservar">
+        <span className="tag">Marcações online</span>
+        <h1 className="shop-name">{cfg.nome_barbearia || "Barbearia"}</h1>
+        <div className="shop-meta">
+          {cfg.morada && <span>📍 {cfg.morada}</span>}
+          {barbeiros[0] && <span>🕘 {hhmm(barbeiros[0].hora_abertura)} – {hhmm(barbeiros[0].hora_fecho)}</span>}
+        </div>
+
         {promos.length > 0 && (
-          <div className="col" style={{ marginBottom: 16 }}>
+          <div className="col" style={{ marginBottom: 18 }}>
             {promos.map((p) => (
               <div className="banner" key={p.id}>
                 <div className="pct">-{Number(p.desconto_pct)}%</div>
@@ -87,6 +75,7 @@ export default function ClienteApp() {
           </div>
         )}
 
+        <div className="book-card">
         <div className="tabs">
           {([["marcar", "Marcar"], ["minhas", "As minhas marcações"], ["cartao", "Fidelidade"]] as const).map(([k, l]) => (
             <button key={k} className={"tab" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</button>
@@ -100,6 +89,7 @@ export default function ClienteApp() {
         ) : (
           <Fidelidade ddiPadrao={cfg.ddi_padrao || "245"} />
         )}
+        </div>
       </div>
       <Toast toast={toast} />
     </>
@@ -220,23 +210,25 @@ function Marcar({ ddiPadrao, servicos, barbeiros, promos, show, irMinhas }: {
 
       {step === 1 && (
         <>
-          <h2 className="sec-title" style={{ marginTop: 0 }}>Serviços e preços</h2>
+          <h2 className="sec-title">Serviços e preços</h2>
           {servicos.length === 0 ? <Empty>Sem serviços disponíveis de momento.</Empty> : (
-            <div className="sgrid">
+            <div className="col">
               {servicos.map((s) => {
                 const d = descontoPara(promos, s.id, hojeISO());
+                const escolher = () => { setServicoId(s.id); setHora(""); setStep(2); };
                 return (
-                  <button key={s.id} className={"scard" + (servicoId === s.id ? " on" : "")}
-                    onClick={() => { setServicoId(s.id); setHora(""); setStep(2); }}>
-                    <span className="ic">✂</span>
-                    <b>{s.nome}</b>
-                    {s.descricao && <span className="muted" style={{ fontSize: ".78rem" }}>{s.descricao}</span>}
-                    <span className="muted">⏱ {s.duracao_min} min</span>
-                    <span className="pr">
-                      {d > 0 && <s>{eur(s.preco)}</s>}
-                      {eur(Math.round(Number(s.preco) * (100 - d) / 100))}
-                    </span>
-                  </button>
+                  <div key={s.id} className={"hcard" + (servicoId === s.id ? " on" : "")} onClick={escolher}>
+                    <div className="info">
+                      <b>{s.nome}</b>
+                      {s.descricao && <span className="muted">{s.descricao}</span>}
+                      <span className="muted">⏱ {s.duracao_min} min</span>
+                      <div className="pr">
+                        {d > 0 && <s>{eur(s.preco)}</s>}
+                        {eur(Math.round(Number(s.preco) * (100 - d) / 100))}
+                      </div>
+                    </div>
+                    <button className="pick" onClick={(e) => { e.stopPropagation(); escolher(); }} aria-label={`Escolher ${s.nome}`}>Escolher</button>
+                  </div>
                 );
               })}
             </div>
@@ -249,17 +241,16 @@ function Marcar({ ddiPadrao, servicos, barbeiros, promos, show, irMinhas }: {
           <h2>2. Escolha o barbeiro</h2>
           {barbeiros.length === 0 ? <Empty>Sem barbeiros disponíveis.</Empty> : (
             <div className="col">
-              {barbeiros.map((b) => (
-                <button key={b.id} className={"opt" + (barbeiroId === b.id ? " on" : "")}
-                  onClick={() => { setBarbeiroId(b.id); setData(""); setHora(""); setStep(3); }}>
-                  <div className="row">
-                    <span className="logo" style={{ width: 42, height: 42, borderRadius: "50%", overflow: "hidden" }}>
-                      {b.foto_url ? <img src={b.foto_url} alt="" width={42} height={42} style={{ objectFit: "cover" }} /> : b.nome[0]}
-                    </span>
-                    <div><b>{b.nome}</b><div className="muted">{hhmm(b.hora_abertura)} – {hhmm(b.hora_fecho)}</div></div>
+              {barbeiros.map((b) => {
+                const escolher = () => { setBarbeiroId(b.id); setData(""); setHora(""); setStep(3); };
+                return (
+                  <div key={b.id} className={"hcard" + (barbeiroId === b.id ? " on" : "")} onClick={escolher}>
+                    <span className="avatar">{b.foto_url ? <img src={b.foto_url} alt="" width={46} height={46} /> : b.nome[0]}</span>
+                    <div className="info"><b>{b.nome}</b><span className="muted">{hhmm(b.hora_abertura)} – {hhmm(b.hora_fecho)}</span></div>
+                    <button className="pick" onClick={(e) => { e.stopPropagation(); escolher(); }} aria-label={`Escolher ${b.nome}`}>Escolher</button>
                   </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
           <div className="sp" /><button className="btn" onClick={() => setStep(1)}>← Voltar</button>
@@ -269,14 +260,15 @@ function Marcar({ ddiPadrao, servicos, barbeiros, promos, show, irMinhas }: {
       {step === 3 && barbeiro && servico && (
         <>
           <h2>3. Data e hora</h2>
+          <div className="mes">{parseISO(data || dias[0] || hojeISO()).toLocaleDateString("pt-PT", { month: "long", year: "numeric" })}</div>
           <div className="days">
             {dias.map((d) => {
               const dt = parseISO(d);
               return (
-                <button key={d} className={"day" + (data === d ? " on" : "")} onClick={() => { setData(d); setHora(""); }}>
-                  <small>{dt.toLocaleDateString("pt-PT", { weekday: "short" })}</small>
+                <button key={d} className={"day" + (data === d ? " on" : "")} onClick={() => { setData(d); setHora(""); }}
+                  aria-label={dt.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" })}>
+                  <small>{dt.toLocaleDateString("pt-PT", { weekday: "long" }).slice(0, 3)}</small>
                   <b>{dt.getDate()}</b>
-                  <small>{dt.toLocaleDateString("pt-PT", { month: "short" })}</small>
                 </button>
               );
             })}
