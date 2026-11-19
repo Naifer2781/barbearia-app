@@ -5,6 +5,8 @@ import { useRealtime, useToast } from "@/lib/hooks";
 import type { BarbeiroPublico, Promocao, Servico } from "@/lib/types";
 import { addDays, descontoPara, eur, fmtData, fromMin, hhmm, hojeISO, isoDow, parseISO, toMin, waLink } from "@/lib/utils";
 import { Empty, Estado, Field, Spinner, Toast, TopBar } from "@/components/ui";
+import TelefoneInput from "@/components/TelefoneInput";
+import { guardarTel, lerTelGuardado, telefoneFinal, telefoneValido, telInicial, TelValue } from "@/lib/ddi";
 
 interface MinhaMarcacao {
   id: string; data: string; hora_inicio: string; duracao_min: number; estado: string;
@@ -92,11 +94,11 @@ export default function ClienteApp() {
         </div>
 
         {loading ? <Spinner /> : tab === "marcar" ? (
-          <Marcar servicos={servicos} barbeiros={barbeiros} promos={promos} show={show} irMinhas={() => setTab("minhas")} />
+          <Marcar ddiPadrao={cfg.ddi_padrao || "245"} servicos={servicos} barbeiros={barbeiros} promos={promos} show={show} irMinhas={() => setTab("minhas")} />
         ) : tab === "minhas" ? (
-          <Minhas show={show} />
+          <Minhas ddiPadrao={cfg.ddi_padrao || "245"} show={show} />
         ) : (
-          <Fidelidade />
+          <Fidelidade ddiPadrao={cfg.ddi_padrao || "245"} />
         )}
       </div>
       <Toast toast={toast} />
@@ -105,24 +107,25 @@ export default function ClienteApp() {
 }
 
 /* ---------------------------------------------------------------- */
-function usePerfilLocal() {
+function usePerfilLocal(ddiPadrao: string) {
   const [nome, setNome] = useState("");
-  const [tel, setTel] = useState("");
+  const [tel, setTel] = useState<TelValue | null>(null);
+  const [pronto, setPronto] = useState(false);
   useEffect(() => {
-    try {
-      setNome(localStorage.getItem("b_nome") || "");
-      setTel(localStorage.getItem("b_tel") || "");
-    } catch {}
-  }, []);
-  const guardar = (n: string, t: string) => {
+    try { setNome(localStorage.getItem("b_nome") || ""); } catch {}
+    setTel(lerTelGuardado(ddiPadrao));
+    setPronto(true);
+  }, [ddiPadrao]);
+  const guardar = (n: string, t: TelValue) => {
     setNome(n); setTel(t);
-    try { localStorage.setItem("b_nome", n); localStorage.setItem("b_tel", t); } catch {}
+    try { localStorage.setItem("b_nome", n); } catch {}
+    guardarTel(t);
   };
-  return { nome, tel, guardar };
+  return { nome, tel, pronto, guardar };
 }
 
-function Marcar({ servicos, barbeiros, promos, show, irMinhas }: {
-  servicos: Servico[]; barbeiros: BarbeiroPublico[]; promos: Promocao[];
+function Marcar({ ddiPadrao, servicos, barbeiros, promos, show, irMinhas }: {
+  ddiPadrao: string; servicos: Servico[]; barbeiros: BarbeiroPublico[]; promos: Promocao[];
   show: (t: string, erro?: boolean) => void; irMinhas: () => void;
 }) {
   const [step, setStep] = useState(1);
@@ -130,15 +133,20 @@ function Marcar({ servicos, barbeiros, promos, show, irMinhas }: {
   const [barbeiroId, setBarbeiroId] = useState<string>("");
   const [data, setData] = useState<string>("");
   const [hora, setHora] = useState<string>("");
-  const perfil = usePerfilLocal();
+  const perfil = usePerfilLocal(ddiPadrao);
   const [nome, setNome] = useState("");
-  const [tel, setTel] = useState("");
+  const [tel, setTel] = useState<TelValue>(() => telInicial(ddiPadrao));
   const [nasc, setNasc] = useState("");
   const [ocupados, setOcupados] = useState<{ hora_inicio: string; duracao_min: number }[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [feito, setFeito] = useState(false);
 
-  useEffect(() => { setNome(perfil.nome); setTel(perfil.tel); }, [perfil.nome, perfil.tel]);
+  useEffect(() => {
+    if (!perfil.pronto) return;
+    setNome(perfil.nome);
+    setTel(perfil.tel ?? telInicial(ddiPadrao));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perfil.pronto]);
 
   const servico = servicos.find((s) => s.id === servicoId);
   const barbeiro = barbeiros.find((b) => b.id === barbeiroId);
@@ -181,7 +189,7 @@ function Marcar({ servicos, barbeiros, promos, show, irMinhas }: {
     setEnviando(true);
     const { error } = await supabase.rpc("criar_marcacao", {
       p_servico: servicoId, p_barbeiro: barbeiroId, p_data: data, p_hora: hora,
-      p_nome: nome, p_telefone: tel, p_nascimento: nasc || null,
+      p_nome: nome, p_telefone: telefoneFinal(tel), p_nascimento: nasc || null,
     });
     setEnviando(false);
     if (error) { show(error.message, true); carregarOcupados(); if (/ocupado|passou/.test(error.message)) setStep(3); return; }
@@ -298,11 +306,11 @@ function Marcar({ servicos, barbeiros, promos, show, irMinhas }: {
             {desc > 0 && <div className="muted" style={{ color: "var(--ok)" }}>Promoção aplicada: -{desc}%</div>}
           </div>
           <Field label="Nome"><input className="input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="O seu nome" autoComplete="name" /></Field>
-          <Field label="WhatsApp"><input className="input" value={tel} onChange={(e) => setTel(e.target.value)} placeholder="912 345 678" inputMode="tel" autoComplete="tel" /></Field>
+          <TelefoneInput label="WhatsApp (indicativo + número)" value={tel} onChange={setTel} />
           <Field label="Data de nascimento (opcional — para prendas de aniversário)"><input className="input" type="date" value={nasc} onChange={(e) => setNasc(e.target.value)} max={hojeISO()} /></Field>
           <div className="row">
             <button className="btn" onClick={() => setStep(3)}>← Voltar</button>
-            <button className="btn gold lg right" disabled={enviando || nome.trim().length < 2 || tel.replace(/\D/g, "").length < 9} onClick={confirmar}>
+            <button className="btn gold lg right" disabled={enviando || nome.trim().length < 2 || !telefoneValido(tel)} onClick={confirmar}>
               {enviando ? "A confirmar…" : "Confirmar Marcação"}
             </button>
           </div>
@@ -313,13 +321,11 @@ function Marcar({ servicos, barbeiros, promos, show, irMinhas }: {
 }
 
 /* ---------------------------------------------------------------- */
-function Minhas({ show }: { show: (t: string, erro?: boolean) => void }) {
-  const perfil = usePerfilLocal();
-  const [tel, setTel] = useState("");
+function Minhas({ ddiPadrao, show }: { ddiPadrao: string; show: (t: string, erro?: boolean) => void }) {
+  const perfil = usePerfilLocal(ddiPadrao);
+  const [tel, setTel] = useState<TelValue>(() => telInicial(ddiPadrao));
   const [lista, setLista] = useState<MinhaMarcacao[] | null>(null);
   const [telAtivo, setTelAtivo] = useState("");
-
-  useEffect(() => { if (perfil.tel && !tel) setTel(perfil.tel); }, [perfil.tel, tel]);
 
   const buscar = useCallback(async (t: string) => {
     const { data, error } = await supabase.rpc("minhas_marcacoes", { p_telefone: t });
@@ -328,7 +334,12 @@ function Minhas({ show }: { show: (t: string, erro?: boolean) => void }) {
     setTelAtivo(t);
   }, [show]);
 
-  useEffect(() => { if (perfil.tel) buscar(perfil.tel); }, [perfil.tel, buscar]);
+  useEffect(() => {
+    if (!perfil.pronto || !perfil.tel) return;
+    setTel(perfil.tel);
+    if (telefoneValido(perfil.tel)) buscar(telefoneFinal(perfil.tel));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perfil.pronto]);
   useEffect(() => {
     if (!telAtivo) return;
     const i = setInterval(() => buscar(telAtivo), 20000);
@@ -351,8 +362,8 @@ function Minhas({ show }: { show: (t: string, erro?: boolean) => void }) {
     <div>
       <h2>Consulte as suas marcações</h2>
       <div className="row" style={{ alignItems: "flex-end" }}>
-        <Field label="O seu WhatsApp"><input className="input" value={tel} onChange={(e) => setTel(e.target.value)} placeholder="912 345 678" inputMode="tel" /></Field>
-        <button className="btn gold" style={{ marginBottom: 12 }} disabled={tel.replace(/\D/g, "").length < 9} onClick={() => { perfil.guardar(perfil.nome, tel); buscar(tel); }}>Ver</button>
+        <TelefoneInput label="O seu WhatsApp" value={tel} onChange={setTel} />
+        <button className="btn gold" style={{ marginBottom: 12 }} disabled={!telefoneValido(tel)} onClick={() => { perfil.guardar(perfil.nome, tel); buscar(telefoneFinal(tel)); }}>Ver</button>
       </div>
       {lista && (lista.length === 0 ? <Empty>Não encontrámos marcações para este número.</Empty> : (
         <div className="col">
@@ -375,9 +386,9 @@ function Minhas({ show }: { show: (t: string, erro?: boolean) => void }) {
 }
 
 /* ---------------------------------------------------------------- */
-function Fidelidade() {
-  const perfil = usePerfilLocal();
-  const [tel, setTel] = useState("");
+function Fidelidade({ ddiPadrao }: { ddiPadrao: string }) {
+  const perfil = usePerfilLocal(ddiPadrao);
+  const [tel, setTel] = useState<TelValue>(() => telInicial(ddiPadrao));
   const [c, setC] = useState<Cartao | null>(null);
   const [erro, setErro] = useState("");
 
@@ -386,14 +397,19 @@ function Fidelidade() {
     if (error) { setErro(error.message); return; }
     setErro(""); setC(data as Cartao);
   }, []);
-  useEffect(() => { if (perfil.tel) { setTel(perfil.tel); buscar(perfil.tel); } }, [perfil.tel, buscar]);
+  useEffect(() => {
+    if (!perfil.pronto || !perfil.tel) return;
+    setTel(perfil.tel);
+    if (telefoneValido(perfil.tel)) buscar(telefoneFinal(perfil.tel));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perfil.pronto]);
 
   return (
     <div>
       <h2>Cartão de fidelidade</h2>
       <div className="row" style={{ alignItems: "flex-end" }}>
-        <Field label="O seu WhatsApp"><input className="input" value={tel} onChange={(e) => setTel(e.target.value)} placeholder="912 345 678" inputMode="tel" /></Field>
-        <button className="btn gold" style={{ marginBottom: 12 }} disabled={tel.replace(/\D/g, "").length < 9} onClick={() => { perfil.guardar(perfil.nome, tel); buscar(tel); }}>Ver</button>
+        <TelefoneInput label="O seu WhatsApp" value={tel} onChange={setTel} />
+        <button className="btn gold" style={{ marginBottom: 12 }} disabled={!telefoneValido(tel)} onClick={() => { perfil.guardar(perfil.nome, tel); buscar(telefoneFinal(tel)); }}>Ver</button>
       </div>
       {erro && <p className="muted" style={{ color: "var(--bad)" }}>{erro}</p>}
       {c && (

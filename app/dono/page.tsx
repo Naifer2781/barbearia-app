@@ -11,10 +11,11 @@ import Equipa from "@/components/dono/Equipa";
 import Clientes from "@/components/dono/Clientes";
 import Promocoes from "@/components/dono/Promocoes";
 import Relatorios from "@/components/dono/Relatorios";
+import Definicoes from "@/components/dono/Definicoes";
 
 const TABS = [
   ["agenda", "📅 Agenda"], ["fin", "💶 Finanças"], ["serv", "✂ Serviços"], ["equipa", "👥 Equipa"],
-  ["cli", "📇 Clientes"], ["promo", "🏷 Promoções"], ["rel", "📊 Relatórios"],
+  ["cli", "📇 Clientes"], ["promo", "🏷 Promoções"], ["rel", "📊 Relatórios"], ["cfg", "⚙ Definições"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -55,6 +56,7 @@ export default function PainelDono() {
         {tab === "cli" && <Clientes show={show} />}
         {tab === "promo" && <Promocoes promos={promos} servicos={servicos} recarregar={carregar} show={show} />}
         {tab === "rel" && <Relatorios barbeiros={barbeiros} />}
+        {tab === "cfg" && <Definicoes show={show} />}
       </div>
       <Toast toast={toast} />
     </>
