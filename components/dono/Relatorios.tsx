@@ -45,8 +45,8 @@ export default function Relatorios({ barbeiros }: { barbeiros: Barbeiro[] }) {
       <div className="row between wrap">
         <SeletorPeriodo p={p} />
         <button className="btn sm" style={{ marginBottom: 12 }} onClick={() => downloadCSV(`relatorio_${p.de}_${p.ate}.csv`, [
-          ["Data", "Hora", "Barbeiro", "Cliente", "Serviço", "Estado", "Preço", "Comissão"],
-          ...marcs.map((m) => [m.data, m.hora_inicio.slice(0, 5), barbeiros.find((b) => b.id === m.barbeiro_id)?.nome ?? "", m.cliente_nome, m.servico_nome ?? "", m.estado, m.preco, m.comissao_valor]),
+          ["Data", "Hora", "Barbeiro", "Cliente", "Serviço", "Estado", "Cancelado por", "Preço", "Comissão"],
+          ...marcs.map((m) => [m.data, m.hora_inicio.slice(0, 5), barbeiros.find((b) => b.id === m.barbeiro_id)?.nome ?? "", m.cliente_nome, m.servico_nome ?? "", m.estado, m.cancelado_por ?? "", m.preco, m.comissao_valor]),
         ])}>⬇ Exportar CSV</button>
       </div>
 

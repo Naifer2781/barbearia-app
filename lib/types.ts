@@ -20,7 +20,7 @@ export interface Marcacao {
   barbeiro_id: string; servico_id: string | null; servico_nome: string | null;
   data: string; hora_inicio: string; duracao_min: number; preco: number;
   desconto_pct: number; comissao_pct: number; comissao_valor: number;
-  estado: Estado; encaixe: boolean;
+  estado: Estado; encaixe: boolean; cancelado_por: "cliente" | "barbeiro" | "dono" | null;
 }
 export interface Bloqueio {
   id: string; barbeiro_id: string | null; data: string;
